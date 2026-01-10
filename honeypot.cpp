@@ -91,7 +91,7 @@ int main() {
      ssh_connection.send_data();
     }
     catch (const runtime_error& e) {
-      cout << e.what();
+      cerr << e.what() << "\n";
     }
   }
 
