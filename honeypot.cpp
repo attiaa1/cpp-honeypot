@@ -73,6 +73,7 @@ public:
               << endl;
 
     // Output to console
+    // Add logic here to filter based on enum, i.e. INFO doesn't show DEBUG
     cout << log_entry.str();
 
     // Output to log file
@@ -109,7 +110,7 @@ public:
 
   void send_data() {
     // TODO: Make this vary +/- a couple of seconds
-    const int WAIT_TIME = 10; // seconds
+    const int WAIT_TIME = 5; // seconds
     // Loop that handles the connection lifetime
     while (1) {
       std::string message = make_line();
@@ -117,6 +118,7 @@ public:
         Logger::instance().log(INFO, "Client disconnected");
         throw runtime_error("Error sending message to client: " +
                             string(strerror(errno)));
+        break;
       }
 
       sleep(WAIT_TIME);
@@ -131,19 +133,21 @@ private:
 
 public:
   ServerSocket(int bind_port) : bind_port_(bind_port) {
-    Logger::instance().log(INFO, "ServerSocket constructed");
+
     /*AF_INET = ipv4, SOCK_STREAM & 0 = TCP*/
     socket_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd_ < 0) {
       throw runtime_error("Error creating socket: " + string(strerror(errno)));
     }
 
+    Logger::instance().log(DEBUG, "ServerSocket constructed");
     /*Before calling bind(), neewd to set up sockaddr_in struct*/
     struct sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(bind_port_);
 
+    Logger::instance().log(DEBUG, "Socket binded");
     /*Handle error if throws < 0 (fail)*/
     if (bind(socket_fd_, (struct sockaddr *)&address, sizeof(address)) < 0) {
       throw runtime_error("Error binding: " + string(strerror(errno)));
@@ -162,7 +166,6 @@ public:
     }
   }
 
-  /*TODO: Refactor with threading to simultaneously hold multiple connections*/
   ConnectionSocket accept_connection() {
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
@@ -175,7 +178,9 @@ public:
       throw runtime_error("Error accepting connection: " +
                           string(strerror(errno)));
     } else
-      return ConnectionSocket(client_fd);
+      Logger::instance().log(DEBUG,
+                             "Creating additional socket for connection");
+    return ConnectionSocket(client_fd);
   }
 };
 
