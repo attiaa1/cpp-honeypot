@@ -18,15 +18,16 @@ public:
 
   /*Refactor to use EndleSSH implementation, random gibberish as banner*/
   void send_data() {
-    const char *message = "SSH-2.0-OpenSSH_8.9\r\n";
+    const char *message = "SSH-2.0-OpenSSH_8.9";
     const char *p = message;
-    int WAIT_TIME = 5; // seconds
+    int WAIT_TIME = 10; // seconds
 
     /*While character is not null terminator*/
     while (*p) {
-      send(client_fd_, &p, 1, 0);
+      send(client_fd_, p, 1, 0);
       p++;
       sleep(WAIT_TIME);
+      if (*p == '\0') { p = message; }
     }
   }
 };
