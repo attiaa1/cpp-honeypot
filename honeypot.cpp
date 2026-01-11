@@ -16,6 +16,12 @@ using namespace std;
 
 enum LogLevel { DEBUG, INFO, WARNING, ERROR, CRITICAL };
 
+std::string sockaddr_to_string(const sockaddr_in &address) {
+  char ip_str[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &address.sin_addr, ip_str, INET_ADDRSTRLEN);
+  return std::string(ip_str);
+}
+
 class Logger {
 private:
   string filename_;
@@ -93,9 +99,9 @@ public:
 
   ~ConnectionSocket() { close(client_fd_); }
 
-  std::string make_line() {
+  string make_line() {
     int payload_length = rand() % 30 + 10;
-    std::string banner_text;
+    string banner_text;
 
     for (int i = 0; i < payload_length; i++) {
       banner_text += char(32 + rand() % 95);
@@ -108,17 +114,48 @@ public:
     return banner_text + "\r\n";
   }
 
+  bool is_connection_alive() {
+    char connection_status_buffer[1];
+    ssize_t connection_pulse =
+        recv(client_fd_, connection_status_buffer,
+             sizeof(connection_status_buffer), MSG_PEEK | MSG_DONTWAIT);
+
+    Logger::instance().log(
+        DEBUG, "recv() returned: " + std::to_string(connection_pulse) +
+                   ", errno: " + std::to_string(errno));
+
+    if (connection_pulse == 0) {
+      Logger::instance().log(INFO, "Client disconnected");
+      return false;
+    } else if (connection_pulse < 0) {
+      if (errno != EAGAIN && errno != EWOULDBLOCK) {
+        Logger::instance().log(ERROR,
+                               "Connection error: " + string(strerror(errno)));
+        return false;
+      }
+    } else {
+      /*Handle bug if client sends data, SSH only, discard*/
+      char discard_buffer[1024];
+      recv(client_fd_, discard_buffer, sizeof(discard_buffer), MSG_DONTWAIT);
+      Logger::instance().log(DEBUG, "Recieved and discarded " + std::to_string(connection_pulse) + "bytes");
+    }
+    return true;
+  }
+
   void send_data() {
     // TODO: Make this vary +/- a couple of seconds
     const int WAIT_TIME = 5; // seconds
     // Loop that handles the connection lifetime
     while (1) {
-      std::string message = make_line();
-      if (send(client_fd_, message.data(), message.size(), 0) < 0) {
-        Logger::instance().log(INFO, "Client disconnected");
+
+      if (!is_connection_alive()) {
+        break;
+      }
+
+      string message = make_line();
+      if (send(client_fd_, message.data(), message.size(), 0) <= 0) {
         throw runtime_error("Error sending message to client: " +
                             string(strerror(errno)));
-        break;
       }
 
       sleep(WAIT_TIME);
@@ -156,7 +193,7 @@ public:
 
   ~ServerSocket() { close(socket_fd_); }
 
-  /*TODO: Change connection_queue amount to 5 when threading added*/
+  /*TODO: Change connection_queue aount to 5 when threading added*/
   void listen_for_connections() {
     int CONNECTION_QUEUE = 5;
 
@@ -170,17 +207,15 @@ public:
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
     int client_fd = accept(socket_fd_, (struct sockaddr *)&address, &addrlen);
-    char connection_ipv4[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &address.sin_addr, connection_ipv4, INET_ADDRSTRLEN);
+
+    std::string connection_ipv4 = sockaddr_to_string(address);
     Logger::instance().log(INFO, string("Accepting connection from ") +
                                      connection_ipv4);
     if (client_fd < 0) {
       throw runtime_error("Error accepting connection: " +
                           string(strerror(errno)));
     } else
-      Logger::instance().log(DEBUG,
-                             "Creating additional socket for connection");
-    return ConnectionSocket(client_fd);
+      return ConnectionSocket(client_fd);
   }
 };
 
@@ -194,7 +229,7 @@ int main() {
       ConnectionSocket ssh_connection = ssh_server.accept_connection();
       ssh_connection.send_data();
     } catch (const runtime_error &e) {
-      cerr << e.what() << "\n";
+      cout << e.what() << "\n";
     }
   }
 
