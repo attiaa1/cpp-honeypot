@@ -1,7 +1,9 @@
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <netinet/in.h>
 #include <stdexcept>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -16,18 +18,33 @@ public:
 
   ~ConnectionSocket() { close(client_fd_); }
 
-  /*Refactor to use EndleSSH implementation, random gibberish as banner*/
-  void send_data() {
-    const char *message = "SSH-2.0-OpenSSH_8.9";
-    const char *p = message;
-    int WAIT_TIME = 10; // seconds
+  std::string make_line() {
+    int payload_length = rand() % 30 + 10;
+    std::string banner_text;
 
-    /*While character is not null terminator*/
-    while (*p) {
-      send(client_fd_, p, 1, 0);
-      p++;
+    for (int i = 0; i < payload_length; i++) {
+      banner_text += char(32 + rand() % 95);
+    }
+
+    // Check to see if starts with SSH banner text, replace
+    if (banner_text.rfind("SSH-", 0) == 0) {
+      banner_text[0] = 'X';
+    }
+    return banner_text + "\r\n";
+  }
+
+  void send_data() {
+    // TODO: Make this vary +/- a couple of seconds
+    const int WAIT_TIME = 10; // seconds
+    // Loop that handles the connection lifetime
+    while (1) {
+      std::string message = make_line();
+      if (send(client_fd_, message.data(), message.size(), 0) < 0) {
+        throw runtime_error("Error sending message to client: " +
+                            string(strerror(errno)));
+      }
+
       sleep(WAIT_TIME);
-      if (*p == '\0') { p = message; }
     }
   }
 };
@@ -86,12 +103,12 @@ int main() {
   ServerSocket ssh_server(2222);
   ssh_server.listen_for_connections();
 
-  while(1) {
+  // Loop to accept new connections
+  while (1) {
     try {
-     ConnectionSocket ssh_connection = ssh_server.accept_connection(); 
-     ssh_connection.send_data();
-    }
-    catch (const runtime_error& e) {
+      ConnectionSocket ssh_connection = ssh_server.accept_connection();
+      ssh_connection.send_data();
+    } catch (const runtime_error &e) {
       cerr << e.what() << "\n";
     }
   }
