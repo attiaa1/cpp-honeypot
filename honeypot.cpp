@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -32,7 +33,7 @@ private:
   }
 
 public:
-  // Singleton logger implementation, otherwise would have to refactor other
+  // Singleton logger implementation, otherwise would have to refactor
   // classes to take Logger object as param
   static Logger &instance() {
     static Logger logger(INFO, "app.log");
@@ -113,6 +114,7 @@ public:
     while (1) {
       std::string message = make_line();
       if (send(client_fd_, message.data(), message.size(), 0) < 0) {
+        Logger::instance().log(INFO, "Client disconnected");
         throw runtime_error("Error sending message to client: " +
                             string(strerror(errno)));
       }
@@ -152,7 +154,7 @@ public:
 
   /*TODO: Change connection_queue amount to 5 when threading added*/
   void listen_for_connections() {
-    int CONNECTION_QUEUE = 1;
+    int CONNECTION_QUEUE = 5;
 
     /*Handle error the same way as bind failure < 0*/
     if (listen(socket_fd_, CONNECTION_QUEUE) < 0) {
@@ -165,6 +167,10 @@ public:
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
     int client_fd = accept(socket_fd_, (struct sockaddr *)&address, &addrlen);
+    char connection_ipv4[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &address.sin_addr, connection_ipv4, INET_ADDRSTRLEN);
+    Logger::instance().log(INFO, string("Accepting connection from ") +
+                                     connection_ipv4);
     if (client_fd < 0) {
       throw runtime_error("Error accepting connection: " +
                           string(strerror(errno)));
