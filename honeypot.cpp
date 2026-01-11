@@ -1,13 +1,86 @@
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
+#include <fstream>
 #include <iostream>
 #include <netinet/in.h>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
 using namespace std;
+
+enum LogLevel { DEBUG, INFO, WARNING, ERROR, CRITICAL };
+
+class Logger {
+private:
+  string filename_;
+  ofstream log_file_;
+  LogLevel log_level_;
+
+  Logger(LogLevel log_level, const string &filename)
+      : log_level_(log_level), filename_(filename) {
+    string string_log_level = log_level_to_string(log_level_);
+    log_file_.open(filename, ios::app);
+    if (!log_file_.is_open()) {
+      throw runtime_error("Error opening log file: " +
+                          string(strerror((errno))));
+    }
+  }
+
+public:
+  // Singleton logger implementation, otherwise would have to refactor other
+  // classes to take Logger object as param
+  static Logger &instance() {
+    static Logger logger(INFO, "app.log");
+    return logger;
+  }
+
+  string log_level_to_string(LogLevel log_level_) {
+    switch (log_level_) {
+    case DEBUG:
+      return "DEBUG";
+    case INFO:
+      return "INFO";
+    case WARNING:
+      return "WARNING";
+    case ERROR:
+      return "ERROR";
+    case CRITICAL:
+      return "CRITICAL";
+    default:
+      return "UNKNOWN";
+    }
+  }
+
+  ~Logger() { log_file_.close(); }
+
+  void log(LogLevel log_level_, const string &message) {
+    string string_log_level = log_level_to_string(log_level_);
+
+    // Get current timestamp
+    time_t now = time(0);
+    tm *timeinfo = localtime(&now);
+    char timestamp[20];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
+
+    ostringstream log_entry;
+    log_entry << "[" << timestamp << "] " << string_log_level << ": " << message
+              << endl;
+
+    // Output to console
+    cout << log_entry.str();
+
+    // Output to log file
+    if (log_file_.is_open()) {
+      log_file_ << log_entry.str();
+      log_file_.flush();
+    }
+  }
+};
 
 class ConnectionSocket {
 private:
@@ -56,6 +129,7 @@ private:
 
 public:
   ServerSocket(int bind_port) : bind_port_(bind_port) {
+    Logger::instance().log(INFO, "ServerSocket constructed");
     /*AF_INET = ipv4, SOCK_STREAM & 0 = TCP*/
     socket_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd_ < 0) {
