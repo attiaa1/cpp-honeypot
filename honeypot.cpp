@@ -137,7 +137,9 @@ public:
       /*Handle bug if client sends data, SSH only, discard*/
       char discard_buffer[1024];
       recv(client_fd_, discard_buffer, sizeof(discard_buffer), MSG_DONTWAIT);
-      Logger::instance().log(DEBUG, "Recieved and discarded " + std::to_string(connection_pulse) + "bytes");
+      Logger::instance().log(DEBUG, "Recieved and discarded " +
+                                        std::to_string(connection_pulse) +
+                                        "bytes");
     }
     return true;
   }
@@ -147,12 +149,13 @@ public:
     const int WAIT_TIME = 5; // seconds
     // Loop that handles the connection lifetime
     while (1) {
-
       if (!is_connection_alive()) {
         break;
       }
 
       string message = make_line();
+      Logger::instance().log(DEBUG,
+                             "Sent " + to_string(message.size()) + "bytes");
       if (send(client_fd_, message.data(), message.size(), 0) <= 0) {
         throw runtime_error("Error sending message to client: " +
                             string(strerror(errno)));
@@ -177,7 +180,8 @@ public:
       throw runtime_error("Error creating socket: " + string(strerror(errno)));
     }
 
-    Logger::instance().log(DEBUG, "ServerSocket constructed");
+    Logger::instance().log(INFO, "Starting honeypot on port " + std::to_string(bind_port_));
+
     /*Before calling bind(), neewd to set up sockaddr_in struct*/
     struct sockaddr_in address;
     address.sin_family = AF_INET;
@@ -207,29 +211,30 @@ public:
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
     int client_fd = accept(socket_fd_, (struct sockaddr *)&address, &addrlen);
-
     std::string connection_ipv4 = sockaddr_to_string(address);
-    Logger::instance().log(INFO, string("Accepting connection from ") +
-                                     connection_ipv4);
+
     if (client_fd < 0) {
       throw runtime_error("Error accepting connection: " +
                           string(strerror(errno)));
-    } else
+    } else {
+      Logger::instance().log(INFO, string("Accepting connection from ") +
+                                       connection_ipv4);
       return ConnectionSocket(client_fd);
+    }
   }
 };
 
 int main() {
-  ServerSocket ssh_server(2222);
-  ssh_server.listen_for_connections();
+  ServerSocket honeypot(2222);
+  honeypot.listen_for_connections();
 
   // Loop to accept new connections
   while (1) {
     try {
-      ConnectionSocket ssh_connection = ssh_server.accept_connection();
-      ssh_connection.send_data();
+      ConnectionSocket honeypot_connection = honeypot.accept_connection();
+      honeypot_connection.send_data();
     } catch (const runtime_error &e) {
-      cout << e.what() << "\n";
+      Logger::instance().log(ERROR, string("Exception caught: ") + e.what());
     }
   }
 
