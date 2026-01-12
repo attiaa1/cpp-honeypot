@@ -4,7 +4,7 @@
 
 ## Project Info
 
-Created to test C++ skills, designed originally with a simple single threaded approach in mind, to eventually refactor to multithreading implementation.
+Created to test C++ skills, designed originally with a simple single threaded approach in mind, to eventually refactor to a single-threaded, event based architecture rather than a multithreading solution due to research.
 
 Current implementation uses two objects `ServerSocket` and `ConnectionSocket`, the former of which handles binding, listening on a specified port, and accepting connections, which returns the latter object, that handles creating the randomly generated lines to feed to client expecting SSH Banner which keeps the connection alive. This was modeled from the EndleSSH source code. 
 
