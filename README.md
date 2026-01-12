@@ -1,3 +1,7 @@
+## Architecture Diagram
+
+<img src="./honeypot-server-single-thread.svg">
+
 ## Project Info
 
 Created to test C++ skills, designed originally with a simple single threaded approach in mind, to eventually refactor to multithreading implementation.
@@ -9,4 +13,4 @@ Current implementation uses two objects `ServerSocket` and `ConnectionSocket`, t
 - [ ] Clean up main file to only import header files if project continues to grow
 - [X] Create more robust error handling, basic currently
 - [ ] Optimize to single-threaded, event based architecture to stop CPU spikes
-- [ ] Containerize and tweak to receive environment variables as config
+- [X] Containerize and tweak to receive environment variables as config
