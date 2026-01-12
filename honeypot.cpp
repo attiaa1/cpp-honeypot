@@ -97,11 +97,21 @@ public:
 class ConnectionSocket {
 private:
   int client_fd_;
+  time_t connection_start_;
 
 public:
-  ConnectionSocket(int client_fd) : client_fd_(client_fd) {}
+  ConnectionSocket(int client_fd) : client_fd_(client_fd) {
+    connection_start_ = time(0);
+  }
 
-  ~ConnectionSocket() { close(client_fd_); }
+  ~ConnectionSocket() {
+    time_t connection_end = time(0);
+    std::string connection_duration =
+        std::to_string(connection_end - connection_start_);
+    Logger::instance().log(INFO, "Connection lasted " + connection_duration +
+                                     " seconds");
+    close(client_fd_);
+  }
 
   string make_line() {
     int payload_length = rand() % 30 + 10;
@@ -184,7 +194,8 @@ public:
       throw runtime_error("Error creating socket: " + string(strerror(errno)));
     }
 
-    Logger::instance().log(INFO, "Starting honeypot on port " + std::to_string(bind_port_));
+    Logger::instance().log(INFO, "Starting honeypot on port " +
+                                     std::to_string(bind_port_));
 
     /*Before calling bind(), neewd to set up sockaddr_in struct*/
     struct sockaddr_in address;
