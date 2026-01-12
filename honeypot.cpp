@@ -159,8 +159,7 @@ public:
   }
 
   void send_data() {
-    // TODO: Make this vary +/- a couple of seconds
-    const int WAIT_TIME = 5; // seconds
+    const int WAIT_TIME = 10; // seconds
     // Loop that handles the connection lifetime
     while (1) {
       if (!is_connection_alive()) {
