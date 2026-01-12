@@ -42,6 +42,7 @@ public:
   // Singleton logger implementation, otherwise would have to refactor
   // classes to take Logger object as param
   static Logger &instance() {
+    /*Change this to test logger filter logic*/
     static Logger logger(INFO, "app.log");
     return logger;
   }
@@ -65,9 +66,13 @@ public:
 
   ~Logger() { log_file_.close(); }
 
-  void log(LogLevel log_level_, const string &message) {
+  void log(LogLevel log_level, const string &message) {
     string string_log_level = log_level_to_string(log_level_);
 
+    if (log_level < log_level_) {
+      /*Don't log*/
+      return;
+    }
     // Get current timestamp
     time_t now = time(0);
     tm *timeinfo = localtime(&now);
@@ -79,7 +84,6 @@ public:
               << endl;
 
     // Output to console
-    // Add logic here to filter based on enum, i.e. INFO doesn't show DEBUG
     cout << log_entry.str();
 
     // Output to log file

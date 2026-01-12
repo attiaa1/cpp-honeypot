@@ -7,6 +7,6 @@ Current implementation uses two objects `ServerSocket` and `ConnectionSocket`, t
 ## Next Steps
 - [X] Add Logger class that outputs to stdout
 - [ ] Clean up main file to only import header files if project continues to grow
-- [ ] Create more robust error handling, basic currently
+- [X] Create more robust error handling, basic currently
 - [ ] Optimize to single-threaded, event based architecture to stop CPU spikes
 - [ ] Containerize and tweak to receive environment variables as config
