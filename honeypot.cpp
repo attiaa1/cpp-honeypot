@@ -85,6 +85,7 @@ public:
 
     // Output to console
     cout << log_entry.str();
+    cout.flush();
 
     // Output to log file
     if (log_file_.is_open()) {

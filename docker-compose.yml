@@ -1,0 +1,9 @@
+services:
+  honeypot:
+    image: honeypot
+    container_name: honeypot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "2222:2222"
